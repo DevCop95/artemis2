@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Artemis II — Misión Lunar 2026</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;400;600;700&family=IBM+Plex+Mono:wght@400;500&family=DM+Sans:wght@300;400&display=swap">
+  <link rel="stylesheet" href="./style.css">
+  <!-- Favicon Espacial -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🚀</text></svg>">
+  <style>
+    @keyframes logoSpin {
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "animejs/lib/anime.es.js": "https://unpkg.com/animejs@3.2.2/lib/anime.es.js"
+      }
+    }
+  </script>
+</head>
+<body>
+
+  <!-- Estado de Carga -->
+  <div id="loading" style="position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; background: #050810; z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; color: #ede8e3; font-family: 'IBM Plex Mono', monospace; text-align: center; transition: opacity 0.5s ease-out;">
+    <div style="position:relative; width:96px; height:96px; margin-bottom:24px;">
+      <svg id="nasa-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="96" height="96" style="animation: logoSpin 18s linear infinite; position: absolute; top: 0; left: 0;">
+        <circle cx="100" cy="100" r="90" fill="none" stroke="#4a8ccf" stroke-width="2" stroke-dasharray="8 8"/>
+        <circle cx="100" cy="100" r="70" fill="none" stroke="#c9a84c" stroke-width="1" opacity="0.6"/>
+        <path d="M 100 10 A 90 90 0 0 1 190 100" fill="none" stroke="#e02828" stroke-width="4"/>
+        <circle cx="190" cy="100" r="4" fill="#ede8e3"/>
+        <circle cx="10" cy="100" r="3" fill="#ede8e3"/>
+        <circle cx="100" cy="10" r="5" fill="#e02828"/>
+      </svg>
+      <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #4a8ccf; font-family: 'Barlow Condensed', sans-serif; font-size: 1.2rem; font-weight: 700; letter-spacing: 0.1em;">TLI</div>
+    </div>
+    <div style="color: #ede8e3; font-family: 'Barlow Condensed', sans-serif; font-size: 3.5rem; letter-spacing: 0.05em; font-weight: 600; margin-bottom: 1rem; text-transform: uppercase;">ARTEMIS II</div>
+    <div id="loading-text" style="color: #c9a84c; font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase;">Inicializando telemetría... 0%</div>
+  </div>
+
+  <!-- 3D Canvas -->
+  <div id="canvas-container"></div>
+
+  <!-- Vignette -->
+  <div id="vignette"></div>
+
+  <!-- Comm Blackout Overlay -->
+  <div id="blackout" aria-hidden="true">
+    <div id="blackout-inner">
+      <div class="bo-tag">COMM BLACKOUT</div>
+      <div class="bo-line" data-es="Lado Oscuro Lunar &nbsp;·&nbsp; 18 min &nbsp;·&nbsp; 18:44 EDT" data-en="Lunar Dark Side &nbsp;·&nbsp; 18 min &nbsp;·&nbsp; 18:44 EDT">Lado Oscuro Lunar &nbsp;·&nbsp; 18 min &nbsp;·&nbsp; 18:44 EDT</div>
+    </div>
+  </div>
+
+  <!-- UI Layer -->
+  <main id="ui">
+
+    <!-- Top Header -->
+    <header id="hdr">
+      <div id="hdr-brand">
+        <span class="brand-agency">NASA</span>
+        <span class="brand-sep"></span>
+        <span class="brand-mission">ARTEMIS II</span>
+      </div>
+      <div id="hdr-crew">Reid Wiseman &nbsp;·&nbsp; Victor Glover &nbsp;·&nbsp; Christina Koch &nbsp;·&nbsp; Jeremy Hansen</div>
+      <div id="hdr-live">
+        <span class="live-dot"></span>
+        <span id="live-label">PREPARANDO LANZAMIENTO</span>
+        <div class="brand-sep" style="margin: 0 12px;"></div>
+        <!-- Language Toggle -->
+        <div id="lang-toggle" style="cursor: pointer; font-family: var(--f-mono); font-size: 11px; font-weight: 500; letter-spacing: 0.1em;">
+          <span id="btn-es" style="color: var(--gold); transition: color 0.3s;">ES</span> <span style="color: var(--ink-35);">|</span> <span id="btn-en" style="color: var(--ink-35); transition: color 0.3s;">EN</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Phase Sidebar Nav -->
+    <nav id="sidenav">
+      <div class="snav-item active" data-i="0"><span class="snav-num">01</span><span class="snav-dot"></span></div><div class="snav-conn"></div>
+      <div class="snav-item" data-i="1"><span class="snav-num">02</span><span class="snav-dot"></span></div><div class="snav-conn"></div>
+      <div class="snav-item" data-i="2"><span class="snav-num">03</span><span class="snav-dot"></span></div><div class="snav-conn"></div>
+      <div class="snav-item" data-i="3"><span class="snav-num">04</span><span class="snav-dot"></span></div><div class="snav-conn"></div>
+      <div class="snav-item" data-i="4"><span class="snav-num">05</span><span class="snav-dot"></span></div><div class="snav-conn"></div>
+      <div class="snav-item" data-i="5"><span class="snav-num">06</span><span class="snav-dot"></span></div>
+    </nav>
+
+    <!-- Phase Text Blocks -->
+    <div id="phases">
+
+      <section class="phase" id="ph-0">
+        <div class="ph-tag" data-es="DÍA 1 &nbsp;·&nbsp; 1 ABR 2026 &nbsp;·&nbsp; 18:35 EDT" data-en="DAY 1 &nbsp;·&nbsp; APR 1 2026 &nbsp;·&nbsp; 18:35 EDT">DÍA 1 &nbsp;·&nbsp; 1 ABR 2026 &nbsp;·&nbsp; 18:35 EDT</div>
+        <h1 class="ph-hed" data-es="LANZAMIENTO" data-en="LAUNCH">LANZAMIENTO</h1>
+        <p class="ph-body" data-es="SLS Block 1 · Orion <em>&quot;Integrity&quot;</em><br>Kennedy Space Center · Pad 39B" data-en="SLS Block 1 · Orion <em>&quot;Integrity&quot;</em><br>Kennedy Space Center · Pad 39B">SLS Block 1 · Orion <em>"Integrity"</em><br>Kennedy Space Center · Pad 39B</p>
+        <div class="ph-data">
+          <span>TLI Burn</span><span class="sep">·</span><span>19:49 EDT</span><span class="sep">·</span><span>Pad 39B</span>
+        </div>
+      </section>
+
+      <section class="phase" id="ph-1">
+        <div class="ph-tag" data-es="DÍAS 2–4 &nbsp;·&nbsp; 2–4 ABR 2026" data-en="DAYS 2–4 &nbsp;·&nbsp; APR 2–4 2026">DÍAS 2–4 &nbsp;·&nbsp; 2–4 ABR 2026</div>
+        <h2 class="ph-hed" data-es="TRÁNSITO<br>INTERLUNAR" data-en="INTERLUNAR<br>TRANSIT">TRÁNSITO<br>INTERLUNAR</h2>
+        <p class="ph-body" data-es="Verificación de sistemas · Soporte vital<br>Medicina espacial · Deep Space Network" data-en="Systems checkout · Life support<br>Space medicine · Deep Space Network">Verificación de sistemas · Soporte vital<br>Medicina espacial · Deep Space Network</p>
+        <div class="ph-data">
+          <span data-es="Traje AxEMU" data-en="AxEMU Suit">Traje AxEMU</span><span class="sep">·</span><span data-es="RCP en microgravedad" data-en="Microgravity CPR">RCP en microgravedad</span>
+        </div>
+      </section>
+
+      <section class="phase" id="ph-2">
+        <div class="ph-tag" data-es="DÍA 5 &nbsp;·&nbsp; 5 ABR 2026 &nbsp;·&nbsp; 00:37 EDT" data-en="DAY 5 &nbsp;·&nbsp; APR 5 2026 &nbsp;·&nbsp; 00:37 EDT">DÍA 5 &nbsp;·&nbsp; 5 ABR 2026 &nbsp;·&nbsp; 00:37 EDT</div>
+        <h2 class="ph-hed" data-es="ESFERA DE<br>INFLUENCIA" data-en="SPHERE OF<br>INFLUENCE">ESFERA DE<br>INFLUENCIA</h2>
+        <p class="ph-body" data-es="Gravedad lunar supera la terrestre.<br>Orion empieza a &quot;caer&quot; hacia la Luna." data-en="Lunar gravity overtakes Earth's.<br>Orion begins &quot;falling&quot; toward the Moon.">Gravedad lunar supera la terrestre.<br>Orion empieza a "caer" hacia la Luna.</p>
+        <div class="ph-data">
+          <span data-es="694,481 millas de trayecto" data-en="694,481 miles journey">694,481 millas de trayecto</span><span class="sep">·</span><span data-es="DSN activo" data-en="DSN active">DSN activo</span>
+        </div>
+      </section>
+
+      <section class="phase phase-gold" id="ph-3">
+        <div class="ph-tag gold" data-es="★&nbsp; DÍA 6 &nbsp;·&nbsp; 6 ABR 2026 &nbsp;·&nbsp; SOBREVUELO LUNAR" data-en="★&nbsp; DAY 6 &nbsp;·&nbsp; APR 6 2026 &nbsp;·&nbsp; LUNAR FLYBY">★&nbsp; DÍA 6 &nbsp;·&nbsp; 6 ABR 2026 &nbsp;·&nbsp; SOBREVUELO LUNAR</div>
+        <h2 class="ph-hed" data-es="RÉCORD<br>HISTÓRICO" data-en="HISTORIC<br>RECORD">RÉCORD<br>HISTÓRICO</h2>
+        <p class="ph-body" data-es="Primera circunnavegación lunar desde Apollo 17.<br>Diciembre 1972 &rarr; Abril 2026" data-en="First lunar circumnavigation since Apollo 17.<br>December 1972 &rarr; April 2026">Primera circunnavegación lunar desde Apollo 17.<br>Diciembre 1972 &rarr; Abril 2026</p>
+        <div class="ph-data">
+          <span data-es="54 AÑOS" data-en="54 YEARS">54 AÑOS</span><span class="sep">·</span><span data-es="LA HUMANIDAD REGRESA A LA LUNA" data-en="HUMANITY RETURNS TO THE MOON">LA HUMANIDAD REGRESA A LA LUNA</span>
+        </div>
+      </section>
+
+      <section class="phase" id="ph-4">
+        <div class="ph-tag" data-es="DÍAS 7–9 &nbsp;·&nbsp; 7–9 ABR 2026" data-en="DAYS 7–9 &nbsp;·&nbsp; APR 7–9 2026">DÍAS 7–9 &nbsp;·&nbsp; 7–9 ABR 2026</div>
+        <h2 class="ph-hed" data-es="RETORNO" data-en="RETURN">RETORNO</h2>
+        <p class="ph-body" data-es="Correcciones de trayectoria y preparación de reentrada.<br>3 burns &nbsp;·&nbsp; Demo radiación solar &nbsp;·&nbsp; Brief científico" data-en="Trajectory corrections and re-entry preparation.<br>3 burns &nbsp;·&nbsp; Solar radiation demo &nbsp;·&nbsp; Science brief">Correcciones de trayectoria y preparación de reentrada.<br>3 burns &nbsp;·&nbsp; Demo radiación solar &nbsp;·&nbsp; Brief científico</p>
+        <div class="ph-data">
+          <span data-es="Amerizaje 10 ABR" data-en="Splashdown APR 10">Amerizaje 10 ABR</span><span class="sep">·</span><span>Re-entry prep</span>
+        </div>
+      </section>
+
+      <section class="phase phase-gold phase-center" id="ph-5">
+        <div class="ph-tag gold" data-es="TRIPULACIÓN &nbsp;·&nbsp; ARTEMIS II" data-en="CREW &nbsp;·&nbsp; ARTEMIS II">TRIPULACIÓN &nbsp;·&nbsp; ARTEMIS II</div>
+        <h2 class="ph-hed" style="font-size: clamp(2.4rem, 4.5vw, 3.8rem); margin-bottom: 0.5rem;" data-es="LOS PIONEROS" data-en="THE PIONEERS">LOS PIONEROS</h2>
+        <p class="ph-body" style="margin-bottom: 0.5rem;" data-es="La primera tripulación en viajar a la Luna en el siglo XXI.<br>Llevando a la humanidad más lejos que nunca." data-en="The first crew to travel to the Moon in the 21st century.<br>Taking humanity farther than ever before.">La primera tripulación en viajar a la Luna en el siglo XXI.<br>Llevando a la humanidad más lejos que nunca.</p>
+        
+        <div class="crew-grid">
+          <div class="crew-member" tabindex="0" role="button" aria-label="Ver perfil" data-name="Reid Wiseman" data-img="./img/reidw.jpg" 
+               data-role-es="Comandante" data-role-en="Commander"
+               data-desc-es="Edad: 50 años. Origen: Baltimore, Maryland. Piloto de prueba naval y aviador condecorado. Ingresó a la NASA en 2009. Pasó 165 días en la ISS en 2014 a bordo de una Soyuz. Fue jefe de astronautas de la NASA."
+               data-desc-en="Age: 50. Origin: Baltimore, Maryland. Decorated naval test pilot and aviator. Joined NASA in 2009. Spent 165 days on the ISS in 2014 aboard a Soyuz. Former Chief of the Astronaut Office.">
+            <img src="./img/reidw.jpg" alt="Reid Wiseman" class="crew-img">
+            <div class="crew-info">
+              <span class="crew-name">Reid Wiseman</span>
+              <span class="crew-role" data-es="Comandante" data-en="Commander">Comandante</span>
+              <p class="crew-bio" data-es="Aviador naval y jefe de astronautas. Pasó 165 días en la ISS." data-en="Naval aviator and Chief Astronaut. Spent 165 days on the ISS.">Aviador naval y jefe de astronautas. Pasó 165 días en la ISS.</p>
+            </div>
+          </div>
+          
+          <div class="crew-member" tabindex="0" role="button" aria-label="Ver perfil" data-name="Victor Glover" data-img="./img/victorg.jpg" 
+               data-role-es="Piloto" data-role-en="Pilot"
+               data-desc-es="Edad: 49 años. Origen: Pomona, California. Capitán de la Marina y piloto de pruebas. Pilotó la misión SpaceX Crew-1 a la ISS en 2020. Primera persona afroamericana en viajar al espacio profundo en la historia."
+               data-desc-en="Age: 49. Origin: Pomona, California. Navy Captain and test pilot. Piloted the SpaceX Crew-1 mission to the ISS in 2020. First African-American person to travel into deep space in history.">
+            <img src="./img/victorg.jpg" alt="Victor Glover" class="crew-img">
+            <div class="crew-info">
+              <span class="crew-name">Victor Glover</span>
+              <span class="crew-role" data-es="Piloto" data-en="Pilot">Piloto</span>
+              <p class="crew-bio" data-es="Pilotó la Crew-1 de SpaceX. Primera persona afroamericana en viajar al espacio profundo." data-en="Piloted SpaceX Crew-1. First African-American to travel to deep space.">Pilotó la Crew-1 de SpaceX. Primera persona afroamericana en viajar al espacio profundo.</p>
+            </div>
+          </div>
+          
+          <div class="crew-member" tabindex="0" role="button" aria-label="Ver perfil" data-name="Christina Koch" data-img="./img/christinak.jpg" 
+               data-role-es="Especialista de misión" data-role-en="Mission Specialist"
+               data-desc-es="Origen: Jacksonville, Carolina del Norte. Ingeniera eléctrica. Posee el récord femenino de 328 días consecutivos en el espacio. Primera mujer en volar a la órbita de la Luna en la historia de la humanidad."
+               data-desc-en="Origin: Jacksonville, North Carolina. Electrical engineer. Holds the record for the longest single spaceflight by a woman (328 days). First woman to fly to lunar orbit in human history.">
+            <img src="./img/christinak.jpg" alt="Christina Koch" class="crew-img">
+            <div class="crew-info">
+              <span class="crew-name">Christina Koch</span>
+              <span class="crew-role" data-es="Especialista de misión" data-en="Mission Specialist">Especialista de misión</span>
+              <p class="crew-bio" data-es="Récord femenino en el espacio (328 días). Primera mujer en volar a la Luna." data-en="Female space duration record (328 days). First woman to fly to the Moon.">Récord femenino en el espacio (328 días). Primera mujer en volar a la Luna.</p>
+            </div>
+          </div>
+          
+          <div class="crew-member" tabindex="0" role="button" aria-label="Ver perfil" data-name="Jeremy Hansen" data-img="./img/jeremyh.jpg" 
+               data-role-es="Especialista de misión (CSA)" data-role-en="Mission Specialist (CSA)"
+               data-desc-es="Origen: London, Ontario (Canadá). Piloto de combate de la Fuerza Aérea. Primer viaje al espacio. Entrenado como aquanauta y cavenauta. Primer astronauta no estadounidense en participar en una misión lunar."
+               data-desc-en="Origin: London, Ontario (Canada). Air Force fighter pilot. First trip to space. Trained as an aquanaut and cavenaut. First non-American astronaut to participate in a lunar mission.">
+            <img src="./img/jeremyh.jpg" alt="Jeremy Hansen" class="crew-img">
+            <div class="crew-info">
+              <span class="crew-name">Jeremy Hansen</span>
+              <span class="crew-role" data-es="Especialista de misión (CSA)" data-en="Mission Specialist (CSA)">Especialista de misión (CSA)</span>
+              <p class="crew-bio" data-es="Piloto de combate canadiense, aquanauta y cavenauta. Primer no estadounidense en misión lunar." data-en="Canadian fighter pilot, aquanaut, and cavenaut. First non-American on a lunar mission.">Piloto de combate canadiense, aquanauta y cavenauta. Primer no estadounidense en misión lunar.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- Telemetry Strip -->
+    <div id="telem">
+      <div class="tl-cell">
+        <span class="tl-k" data-es="DIST. TIERRA" data-en="EARTH DIST.">DIST. TIERRA</span>
+        <span class="tl-v" id="tl-earth">0 km</span>
+      </div>
+      <div class="tl-div"></div>
+      <div class="tl-cell">
+        <span class="tl-k" data-es="DIST. LUNA" data-en="MOON DIST.">DIST. LUNA</span>
+        <span class="tl-v" id="tl-moon">384,400 km</span>
+      </div>
+      <div class="tl-div"></div>
+      <div class="tl-cell">
+        <span class="tl-k" data-es="VELOCIDAD" data-en="VELOCITY">VELOCIDAD</span>
+        <span class="tl-v" id="tl-vel">0 km/h</span>
+      </div>
+      <div class="tl-div"></div>
+      <div class="tl-cell">
+        <span class="tl-k">MET</span>
+        <span class="tl-v" id="tl-met">T+0:00</span>
+      </div>
+    </div>
+
+    <!-- Progress Bar -->
+    <div id="prog-track">
+      <div id="prog-fill"></div>
+      <div id="prog-label">SCROLL</div>
+    </div>
+
+    <!-- Scroll Hint -->
+    <div id="scroll-hint">
+      <div class="sh-mouse">
+        <div class="sh-wheel"></div>
+      </div>
+      <span data-es="Desplaza para avanzar" data-en="Scroll to advance">Desplaza para avanzar</span>
+    </div>
+
+  </main>
+
+  <!-- Modal / Pop-up de Tripulación -->
+  <div id="crew-modal" role="dialog" aria-modal="true" aria-labelledby="modal-name" aria-hidden="true">
+    <div class="modal-content">
+      <button class="modal-close" id="close-modal" aria-label="Cerrar modal">&times;</button>
+      <div class="modal-body">
+        <div class="modal-img-container">
+          <img id="modal-img" src="" alt="Astronaut">
+        </div>
+        <div class="modal-text">
+          <div id="modal-role">Rol</div>
+          <div id="modal-name">Nombre</div>
+          <div class="modal-divider"></div>
+          <div id="modal-desc">Descripción completa...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

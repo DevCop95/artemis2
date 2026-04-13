@@ -1,0 +1,17 @@
+{
+  "name": "pruebas",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "animejs": "^4.3.6",
+    "three": "^0.183.2"
+  }
+}
