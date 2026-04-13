@@ -639,6 +639,7 @@ document.querySelectorAll('.crew-member').forEach(card => {
     document.getElementById('modal-desc').textContent = card.getAttribute(`data-desc-${lang}`);
     
     // Animate In
+    modal.removeAttribute('aria-hidden');
     modal.style.display = 'flex';
     anime({ targets: modal, opacity: [0, 1], duration: 300, easing: 'easeOutQuad' });
     anime({
@@ -647,7 +648,7 @@ document.querySelectorAll('.crew-member').forEach(card => {
       duration: 500, delay: 100, easing: 'easeOutExpo'
     });
 
-    // Accesibility focus inside modal
+    // Accessibility: focus inside modal only after aria-hidden is removed
     if (closeBtn) closeBtn.focus();
   };
 
@@ -664,12 +665,13 @@ document.querySelectorAll('.crew-member').forEach(card => {
 function closeModal() {
   const cardToFocus = window.activeCrewCard;
   window.activeCrewCard = null;
+  // Move focus out BEFORE the modal gets aria-hidden to avoid browser warning
+  if (cardToFocus) cardToFocus.focus();
   anime({
     targets: modal, opacity: [1, 0], duration: 300, easing: 'easeInQuad',
-    complete: () => { 
-      modal.style.display = 'none'; 
-      // Return focus to the card that opened the modal
-      if (cardToFocus) cardToFocus.focus();
+    complete: () => {
+      modal.style.display = 'none';
+      modal.setAttribute('aria-hidden', 'true');
     }
   });
   anime({ targets: '.modal-content', scale: [1, 0.95], translateY: [0, 10], duration: 300, easing: 'easeInQuad' });

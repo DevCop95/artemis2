@@ -1,7 +1,7 @@
-/* ââââââââââââââââââââââââââââââââââââââââââââââ
+/* ══════════════════════════════════════════════
    ARTEMIS II â Mission Control Editorial Theme
    Fonts: Barlow Condensed Â· IBM Plex Mono Â· DM Sans
-   ââââââââââââââââââââââââââââââââââââââââââââââ */
+   ═════════════*/
 
 :root {
   --bg:        #050810;
@@ -33,18 +33,24 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* ââ Canvas ââ */
+/* ══════════════════════════════════════════════
+   CANVAS
+   ═════════════*/
 #canvas-container {
   position: absolute; inset: 0; z-index: 1;
 }
 
-/* ââ Vignette ââ */
+/* ══════════════════════════════════════════════
+   VIGNETTE
+   ═════════════*/
 #vignette {
   position: fixed; inset: 0; z-index: 4; pointer-events: none;
   background: radial-gradient(ellipse 80% 80% at 50% 50%, transparent 40%, rgba(5,8,16,0.65) 100%);
 }
 
-/* ââ Blackout ââ */
+/* ══════════════════════════════════════════════
+   BLACKOUT
+   ═════════════*/
 #blackout {
   position: fixed; inset: 0; z-index: 70; pointer-events: none;
   background: #000;
@@ -67,16 +73,18 @@ body {
   text-transform: uppercase;
 }
 
-/* ââ UI Layer ââ */
+/* ══════════════════════════════════════════════
+   UI Layer
+   ═════════════*/
 #ui {
   position: relative; z-index: 10;
   width: 100%; height: 100%;
   pointer-events: none;
 }
 
-/* ââââââââââââââ
+/* ══════════════════════════════════════════════
    HEADER
-ââââââââââââââ */
+   ═════════════*/
 #hdr {
   position: absolute; top: 0; left: 0; right: 0;
   display: flex; align-items: center; gap: 24px;
@@ -124,9 +132,9 @@ body {
   50%       { opacity: 0.35; transform: scale(0.85); }
 }
 
-/* ââââââââââââââ
+/* ══════════════════════════════════════════════
    SIDE NAV
-ââââââââââââââ */
+   ═════════════*/
 #sidenav {
   position: absolute; right: 28px; top: 50%;
   transform: translateY(-50%);
@@ -160,9 +168,9 @@ body {
 }
 .snav-item.active .snav-num { color: var(--gold); }
 
-/* ââââââââââââââ
+/* ══════════════════════════════════════════════
    PHASE BLOCKS
-ââââââââââââââ */
+   ═════════════*/
 #phases {
   position: absolute;
   left: 0; /* Resetting to 0 so we can span full screen */
@@ -185,7 +193,7 @@ body {
   max-width: 600px !important;
   left: auto !important;
   right: 6vw !important;
-  top: 50% !important; 
+  top: 43% !important; 
   transform: translateY(-50%) !important;
   text-align: right;
   display: flex;
@@ -255,9 +263,9 @@ body {
 }
 .ph-data .sep { color: var(--ink-12); }
 
-/* ââââââââââââââ
+/* ══════════════════════════════════════════════
    TELEMETRY
-ââââââââââââââ */
+   ═════════════*/
 #telem {
   position: absolute;
   bottom: 34px; left: 28px; right: 64px;
@@ -283,9 +291,9 @@ body {
 }
 .tl-div { width: 1px; height: 28px; background: var(--ink-12); margin: 0 16px; }
 
-/* ââââââââââââââ
+/* ══════════════════════════════════════════════
    PROGRESS
-ââââââââââââââ */
+   ═════════════*/
 #prog-track {
   position: absolute; bottom: 0; left: 0; right: 0;
   height: 2px; background: var(--ink-06);
@@ -302,9 +310,9 @@ body {
   color: var(--ink-35); text-transform: uppercase;
 }
 
-/* ââââââââââââââ
+/* ══════════════════════════════════════════════
    SPEED LINES (Anime)
-ââââââââââââââ */
+   ═════════════*/
 #speed-lines {
   position: absolute;
   top: 0; left: 0; width: 100%; height: 100%;
@@ -351,14 +359,14 @@ body {
   100% { top: 16px; opacity: 0; }
 }
 
-/* ââââââââââââââ
+/* ══════════════════════════════════════════════
    CREW GRID
-ââââââââââââââ */
+   ═════════════*/
 .crew-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 1.25rem;
-  margin-top: 2rem;
+  gap: 0.85rem;
+  margin-top: 1rem;
   max-width: 600px;
 }
 
@@ -453,9 +461,9 @@ body {
   overflow: hidden;
 }
 
-/* ââââââââââââââ
+/* ══════════════════════════════════════════════
    CREW MODAL POPUP
-ââââââââââââââ */
+   ═════════════*/
 #crew-modal {
   position: fixed; inset: 0; z-index: 9999;
   background: rgba(3, 5, 10, 0.85);
@@ -558,11 +566,20 @@ body {
   transform: rotate(90deg);
 }
 
-/* ââââââââââââââ
+/* ══════════════════════════════════════════════
    RESPONSIVE
-ââââââââââââââ */
+   ═════════════*/
 
 /* ââ Tablet (768px â 1024px) ââ */
+
+/* ── Large screens (≥ 1025px): crew section clears telemetry bar ── */
+@media (min-width: 1025px) {
+  .phase-center {
+    top: 44% !important;
+    padding-bottom: 90px; /* clearance above the telemetry strip */
+  }
+}
+
 @media (max-width: 1024px) {
   .phase { width: min(380px, 44vw); }
   .ph-hed { font-size: clamp(2rem, 6vw, 4rem); }
@@ -600,19 +617,19 @@ body {
   .snav-dot { width: 4px; height: 4px; }
   .snav-conn { height: 12px; }
 
-  /* Phases: full width en mÃ³vil, centradas verticalmente */
+  /* Phases: full width en móvil — height:100vh para que top:% funcione en hijos absolute */
   #phases {
     width: 100vw;
     left: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    height: auto;
+    top: 0;
+    transform: none;
+    height: 100vh;
   }
   .phase {
-    width: calc(100vw - 28px);
+    width: calc(100vw - 40px);
     left: 14px;
     right: 14px;
-    top: 62%; transform: translateY(-50%);
+    top: 68%; transform: translateY(-50%);
     max-width: 100%;
   }
   .ph-hed {
@@ -634,7 +651,7 @@ body {
     max-width: 100% !important;
     right: 14px !important;
     left: 14px !important;
-    top: 62% !important; transform: translateY(-50%) !important;
+    top: 42% !important; transform: translateY(-50%) !important;
     align-items: flex-start;
     text-align: left;
   }
@@ -649,7 +666,7 @@ body {
   #telem {
     right: 10px;
     left: 10px;
-    bottom: 30px;
+    bottom: max(56px, calc(14px + env(safe-area-inset-bottom, 42px)));
     padding: 8px 10px;
     flex-wrap: wrap;
     justify-content: space-between;
@@ -663,9 +680,8 @@ body {
   .tl-k { font-size: 7px; }
   .tl-v { font-size: 11px; }
 
-  /* Scroll hint */
   #scroll-hint {
-    bottom: 85px;
+    bottom: max(120px, calc(80px + env(safe-area-inset-bottom, 42px)));
     right: 50%;
     transform: translateX(50%);
   }
@@ -727,7 +743,8 @@ body {
   /* Progress bar label */
   #prog-label { display: none; }
 }
-
+
+
 /* Accessibility (A11y) */
 .crew-member:focus-visible { outline: 2px solid var(--gold); outline-offset: 4px; }
 .modal-close:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
