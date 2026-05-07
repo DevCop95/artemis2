@@ -485,100 +485,147 @@ function activatePhase(np) {
 }
 
 // ══════════════════════════════════════════════
-// MASTER ANIME.JS TIMELINE
+// INTERPOLATION HELPERS
 // ══════════════════════════════════════════════
-const TL = anime.timeline({ autoplay: false, duration: 10000, easing: 'linear' });
+function lerp(a, b, t) { return a + (b - a) * t; }
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 
-// ─── Phase 0: Launch (0-20%) ───
-TL
-  .add({ targets: '#scroll-hint', opacity: 0, duration: 400 }, 0)
-  .add({ targets: exFire.scale, x: 1, y: 1, z: 1, duration: 800, easing: 'easeOutQuad' }, 0)
-  .add({ targets: rGrp.position, x: [-.1, .1, -.07, .07, 0], duration: 650, easing: 'easeInOutSine' }, 0)
-  .add({ targets: rGrp.position, y: 20, duration: 1900, easing: 'easeOutQuad' }, 500)
-  .add({ targets: earthGrp.position, y: -300, z: -50, duration: 1900, easing: 'easeInOutQuad' }, 500)
-  .add({ targets: window.speedLinesMat, opacity: 0.35, duration: 1000, easing: 'easeInQuad' }, 1000)
-  .add({ targets: cam, x: 0, y: 25, z: 50, lx: 0, ly: 20, lz: 0, duration: 1800, easing: 'easeInOutQuad' }, 700);
+function getKeyframeVal(progress, kfs) {
+  let i = 0;
+  for (i = kfs.length - 1; i >= 0; i--) {
+    if (progress >= kfs[i][0]) break;
+  }
+  const kf0 = kfs[i];
+  const kf1 = kfs[i + 1];
+  if (!kf1) return kf0[1];
+  const t = (progress - kf0[0]) / (kf1[0] - kf0[0]);
+  const v0 = kf0[1];
+  const v1 = kf1[1];
+  if (typeof v0 === 'object' && v0 !== null) {
+    return {
+      x: lerp(v0.x, v1.x, t),
+      y: lerp(v0.y, v1.y, t),
+      z: lerp(v0.z, v1.z, t),
+      lx: v0.lx !== undefined ? lerp(v0.lx, v1.lx, t) : undefined,
+      ly: v0.ly !== undefined ? lerp(v0.ly, v1.ly, t) : undefined,
+      lz: v0.lz !== undefined ? lerp(v0.lz, v1.lz, t) : undefined
+    };
+}
+  return lerp(v0, v1, t);
+}
 
-// ─── Phase 1: Interlunar Transit (20-40%) ───
-TL
-  .add({ targets: exFire.scale, x: 0, y: 0, z: 0, duration: 80 }, 2000)
-  // Cohete apunta a la derecha (+X)
-  .add({ targets: rGrp.rotation, x: 0, y: 0, z: -Math.PI / 2, duration: 1500, easing: 'easeInOutCubic' }, 2000)
-  // Tierra a la izquierda (-X)
-  .add({ targets: earthGrp.position, x: -800, y: -200, z: -200, duration: 2000, easing: 'easeOutQuad' }, 2000)
-  // Luna se asoma por la derecha (+X)
-  .add({ targets: moonGrp.position, x: 800, y: 0, z: -200, duration: 2000, easing: 'easeOutQuad' }, 2000)
-  .add({ targets: cam, x: 0, y: 0, z: 80, lx: 0, ly: 0, lz: 0, duration: 2000, easing: 'easeInOutCubic' }, 2000);
+// ══════════════════════════════════════════════
+// KEYFRAME DEFINITIONS (% progress, value, easing)
+// ══════════════════════════════════════════════
+const earthKF = [
+  [0,   { x: 0, y: -102, z: -10 }],
+  [5,   { x: 0, y: -300, z: -50 }],
+  [20,  { x: -800, y: -200, z: -200 }],
+  [40,  { x: -1500, y: 0, z: 0 }],
+  [57,  { x: -1500, y: 0, z: 0 }],
+  [59,  { x: -150, y: -30, z: -600 }],
+  [65,  { x: -80, y: 20, z: -500 }],
+  [72,  { x: -120, y: 60, z: -350 }],
+  [80,  { x: -250, y: -60, z: -100 }],
+  [85,  { x: -70, y: -60, z: -40 }],
+  [100, { x: -70, y: -60, z: -40 }]
+];
 
-// ─── Phase 2: Lunar Sphere of Influence (40-60%) ───
-TL
-  // Luna se acerca desde la derecha (+X)
-  .add({ targets: moonGrp.position, x: 120, y: 0, z: -50, duration: 2000, easing: 'easeOutQuad' }, 4000)
-  // Cohete sigue apuntando a la derecha (+X)
-  .add({ targets: rGrp.rotation, x: 0, y: 0, z: -Math.PI / 2.5, duration: 1500, easing: 'easeInOutQuad' }, 4000)
-  // Tierra huye por la izquierda (-X)
-  .add({ targets: earthGrp.position, x: -1500, duration: 2000, easing: 'linear' }, 4000)
-  .add({ targets: cam, x: 0, y: 0, z: 70, lx: 20, ly: 0, lz: -20, duration: 2000, easing: 'easeInOutQuad' }, 4000);
+const moonKF = [
+  [0,   { x: 60, y: -800, z: -2000 }],
+  [20,  { x: 800, y: 0, z: -200 }],
+  [40,  { x: 120, y: 0, z: -50 }],
+  [57,  { x: 80, y: -15, z: -30 }],
+  [60,  { x: 30, y: -30, z: 20 }],
+  [65,  { x: 20, y: -35, z: 40 }],
+  [72,  { x: 50, y: -30, z: 80 }],
+  [78,  { x: 150, y: -50, z: 200 }],
+  [82,  { x: 400, y: -80, z: 100 }],
+  [86,  { x: 800, y: -100, z: -100 }],
+  [100, { x: 1000, y: -100, z: -200 }]
+];
 
-// ─── Phase 3: Lunar Flyby (60-80%) ───
-TL
-  .add({ targets: window.speedLinesMat, opacity: 0, duration: 500 }, 6000)
-  // Bajar el cohete para que se mantenga en cuadro durante el sobrevuelo y el retorno
-  .add({ targets: rGrp.position, y: 0, duration: 2000, easing: 'easeInOutQuad' }, 6000)
-  // Luna pasa por debajo y a la derecha (+X)
-  .add({ targets: moonGrp.position, x: 30, y: -30, z: 20, duration: 2000, easing: 'easeInOutSine' }, 6000)
-  // Cohete realiza sobrevuelo (orbita - gira suavemente su nariz hacia nosotros)
-  .add({ targets: rGrp.rotation, x: 0.5, y: -Math.PI / 4, z: -Math.PI / 2, duration: 2000, easing: 'easeInOutCubic' }, 6000)
-  .add({ targets: cam, x: -20, y: 10, z: 40, lx: 20, ly: -10, lz: 0, duration: 2000, easing: 'easeInOutCubic' }, 6000)
-  
-  // ★ Comm blackout
-  .add({ targets: '#blackout', opacity: 1, duration: 350, easing: 'linear' }, 6600)
-  
-  // En lugar de teletransportar la Tierra en 1ms (lo que rompe el scroll inverso), 
-  // la movemos de forma invisible y continua detrás de la Luna durante el blackout
-  .add({ targets: earthGrp.position, x: -100, y: -50, z: -800, duration: 700, easing: 'linear' }, 6600)
-  
-  .add({ targets: '#blackout', opacity: 0, duration: 700, easing: 'linear' }, 7300)
-  
-  // ★ Earthrise — Tierra emerge suavemente por arriba a la izquierda del horizonte lunar (-X, +Y)
-  .add({ targets: earthGrp.position, x: -150, y: 50, z: -400, duration: 1500, easing: 'easeOutSine' }, 7300);
+const rGrpPosKF = [
+  [0,   { x: 0, y: 0, z: 0 }],
+  [5,   { x: 0, y: 20, z: 0 }],
+  [20,  { x: 0, y: 20, z: 0 }],
+  [57,  { x: 0, y: 0, z: 0 }],
+  [60,  { x: 5, y: -5, z: 10 }],
+  [65,  { x: 8, y: -8, z: 15 }],
+  [72,  { x: 10, y: -5, z: 20 }],
+  [78,  { x: 15, y: 0, z: 30 }],
+  [82,  { x: 20, y: 0, z: 50 }],
+  [86,  { x: 0, y: 0, z: 0 }],
+  [100, { x: -30, y: 0, z: -5 }]
+];
 
-// ─── Phase 4: Return (80-85%) ───
-TL
-  .add({ targets: window.exFire.scale, x: 1, y: 1, z: 1, duration: 500, easing: 'easeOutQuad' }, 8000)
-  .add({ targets: window.speedLinesMat, opacity: 0.4, duration: 500 }, 8000)
-  // Cohete termina de girar. Estaba en -Math.PI/2 (Derecha). Gira fluidamente hasta Math.PI/2 (Izquierda)
-  .add({ targets: rGrp.rotation, x: 0, y: 0, z: Math.PI / 2, duration: 1400, easing: 'easeInOutSine' }, 8000)
-  // Bajar el cohete para mantenerlo visible y centrado tras salir de la órbita lunar
-  .add({ targets: rGrp.position, y: 0, duration: 1700, easing: 'easeInOutQuad' }, 8000)
-  // Luna se aleja rápidamente por la derecha (+X)
-  .add({ targets: moonGrp.position, x: 1000, y: -100, z: -200, duration: 1700, easing: 'easeInQuad' }, 8000)
-  // Tierra se acerca de frente desde la izquierda (-X)
-  .add({ targets: earthGrp.position, x: -250, y: -60, z: -100, duration: 1700, easing: 'easeInOutCubic' }, 8000)
-  .add({ targets: cam, x: 0, y: 0, z: 80, lx: -50, ly: 0, lz: 0, duration: 1700, easing: 'easeInOutQuad' }, 8000);
+const rGrpRotKF = [
+  [0,   { x: 0, y: 0, z: 0 }],
+  [20,  { x: 0, y: 0, z: -Math.PI / 2 }],
+  [40,  { x: 0, y: 0, z: -Math.PI / 2.5 }],
+  [57,  { x: 0.3, y: -Math.PI / 6, z: -Math.PI / 2 }],
+  [60,  { x: 0.5, y: -Math.PI / 4, z: -Math.PI / 2 }],
+  [65,  { x: 0.6, y: -Math.PI / 5, z: -Math.PI / 2.2 }],
+  [72,  { x: 0.4, y: 0, z: -Math.PI / 2.5 }],
+  [78,  { x: 0.2, y: Math.PI / 6, z: -Math.PI / 3 }],
+  [82,  { x: 0, y: Math.PI / 4, z: 0 }],
+  [86,  { x: 0, y: Math.PI / 2.5, z: Math.PI / 6 }],
+  [92,  { x: 0, y: Math.PI / 2, z: Math.PI / 4 }],
+  [100, { x: 0, y: Math.PI / 2, z: Math.PI * 0.8 }]
+];
 
-// ─── Phase 5: Splashdown (85-100%) ───
-TL
-  // Speedlines apagadas (Entrando a atmósfera)
-  .add({ targets: window.speedLinesMat, opacity: 0, duration: 500 }, 8500)
-  // Propulsor apagado (Caída libre)
-  .add({ targets: window.exFire.scale, x: 0, y: 0, z: 0, duration: 500 }, 8500)
-  // Tierra ocupa toda la izquierda de la pantalla
-  .add({ targets: earthGrp.position, x: -70, y: -60, z: -40, duration: 1500, easing: 'easeOutQuad' }, 8500)
-  // Cohete se ladea con el escudo térmico por delante (Inclinación final)
-  .add({ targets: rGrp.position, x: -30, y: 0, z: -5, duration: 1500, easing: 'easeInOutQuad' }, 8500)
-  .add({ targets: rGrp.rotation, x: 0, y: 0, z: Math.PI * 0.8, duration: 1500, easing: 'easeInOutQuad' }, 8500)
-  // Cámara encuadra el lado izquierdo para dar espacio a la UI derecha
-  .add({ targets: cam, x: -10, y: 10, z: 30, lx: -40, ly: 0, lz: -10, duration: 1500, easing: 'easeInOutQuad' }, 8500);
+const camKF = [
+  [0,   { x: 0, y: 5, z: 25, lx: 0, ly: 0, lz: -10 }],
+  [5,   { x: 0, y: 25, z: 50, lx: 0, ly: 20, lz: 0 }],
+  [20,  { x: 0, y: 0, z: 80, lx: 0, ly: 0, lz: 0 }],
+  [40,  { x: 0, y: 0, z: 70, lx: 20, ly: 0, lz: -20 }],
+  [57,  { x: -15, y: 8, z: 35, lx: 15, ly: -5, lz: 0 }],
+  [60,  { x: -20, y: 10, z: 40, lx: 20, ly: -10, lz: 0 }],
+  [65,  { x: -18, y: 12, z: 45, lx: 15, ly: -5, lz: 10 }],
+  [72,  { x: -10, y: 15, z: 50, lx: 10, ly: 0, lz: 15 }],
+  [78,  { x: 0, y: 10, z: 60, lx: -20, ly: 0, lz: 20 }],
+  [82,  { x: 0, y: 5, z: 70, lx: -35, ly: 0, lz: 10 }],
+  [86,  { x: 0, y: 0, z: 80, lx: -50, ly: 0, lz: 0 }],
+  [92,  { x: -5, y: 5, z: 50, lx: -45, ly: 0, lz: -5 }],
+  [100, { x: -10, y: 10, z: 30, lx: -40, ly: 0, lz: -10 }]
+];
+
+const fireKF = [
+  [0,   { x: 0, y: 0, z: 0 }],
+  [2,   { x: 1, y: 1, z: 1 }],
+  [18,  { x: 1, y: 1, z: 1 }],
+  [22,  { x: 0.18, y: 0.22, z: 0.18 }],
+  [40,  { x: 0.15, y: 0.2, z: 0.15 }],
+  [42,  { x: 0.5, y: 0.6, z: 0.5 }],
+  [46,  { x: 0.4, y: 0.5, z: 0.4 }],
+  [50,  { x: 0.6, y: 0.7, z: 0.6 }],
+  [53,  { x: 0.5, y: 0.6, z: 0.5 }],
+  [56,  { x: 0.4, y: 0.5, z: 0.4 }],
+  [59,  { x: 0.5, y: 0.6, z: 0.5 }],
+  [62,  { x: 0.18, y: 0.22, z: 0.18 }],
+  [78,  { x: 0.15, y: 0.2, z: 0.15 }],
+  [80,  { x: 1, y: 1, z: 1 }],
+  [85,  { x: 0.18, y: 0.22, z: 0.18 }],
+  [100, { x: 0, y: 0, z: 0 }]
+];
+
+const speedLinesKF = [
+  [0,   0],
+  [5,   0.35],
+  [10,  0.35],
+  [60,  0],
+  [80,  0.4],
+  [85,  0],
+  [100, 0]
+];
 
 // ══════════════════════════════════════════════
 // SCROLL ENGINE  —  smooth Lerp + phase tracking
+// ══════════════▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
 // ══════════════════════════════════════════════
 let progress = 0, target = 0;
-const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
 window.addEventListener('wheel', e => {
-  // Reducido significativamente de 0.045 a 0.02 para scroll más lento y estable
   target = clamp(target + e.deltaY * 0.02, 0, 100);
 }, { passive: true });
 
@@ -586,7 +633,6 @@ let tY = null;
 window.addEventListener('touchstart', e => { tY = e.touches[0].clientY; }, { passive: true });
 window.addEventListener('touchmove', e => {
   if (tY === null) return;
-  // Reducido de 0.12 a 0.08 para scroll táctil más controlable
   target = clamp(target + (tY - e.touches[0].clientY) * 0.08, 0, 100);
   tY = e.touches[0].clientY;
 }, { passive: true });
@@ -599,19 +645,58 @@ window.addEventListener('keydown', e => {
 
 function tick() {
   requestAnimationFrame(tick);
-  
-  // Factor de Lerp (Suavidad): Reducido de 0.07 a 0.03
-  // Cuanto menor es este número, más inercia ("pesado") se siente el scroll
-  progress += (target - progress) * 0.03; 
-  
-  // Evitar vibraciones microscópicas de cálculo al llegar al target
+
+  progress += (target - progress) * 0.03;
   if (Math.abs(target - progress) < 0.001) progress = target;
 
-  TL.seek(TL.duration * (progress / 100));
-  
+  // Apply interpolated values directly
+  const earthPos = getKeyframeVal(progress, earthKF);
+  earthGrp.position.set(earthPos.x, earthPos.y, earthPos.z);
+
+  const moonPos = getKeyframeVal(progress, moonKF);
+  moonGrp.position.set(moonPos.x, moonPos.y, moonPos.z);
+
+  const rPos = getKeyframeVal(progress, rGrpPosKF);
+  rGrp.position.set(rPos.x, rPos.y, rPos.z);
+
+  const rRot = getKeyframeVal(progress, rGrpRotKF);
+  rGrp.rotation.set(rRot.x, rRot.y, rRot.z);
+
+  const camPos = getKeyframeVal(progress, camKF);
+  cam.x = camPos.x; cam.y = camPos.y; cam.z = camPos.z;
+  if (camPos.lx !== undefined) {
+    cam.lx = camPos.lx; cam.ly = camPos.ly; cam.lz = camPos.lz;
+  }
+
+  const fire = getKeyframeVal(progress, fireKF);
+  exFire.scale.set(fire.x, fire.y, fire.z);
+
+  if (window.speedLinesMat) {
+    window.speedLinesMat.opacity = getKeyframeVal(progress, speedLinesKF);
+  }
+
+  // Blackout overlay con entrada y salida suave
+  const blackout = document.getElementById('blackout');
+  if (blackout) {
+    const blackoutStart = 57;
+    const blackoutPeak = 59;
+    const blackoutEndStart = 72;
+    const blackoutEnd = 74;
+
+    let targetOpacity = 0;
+    if (progress >= blackoutStart && progress < blackoutPeak) {
+      targetOpacity = (progress - blackoutStart) / (blackoutPeak - blackoutStart);
+    } else if (progress >= blackoutPeak && progress < blackoutEndStart) {
+      targetOpacity = 1;
+    } else if (progress >= blackoutEndStart && progress < blackoutEnd) {
+      targetOpacity = 1 - (progress - blackoutEndStart) / (blackoutEnd - blackoutEndStart);
+    }
+    blackout.style.opacity = targetOpacity.toFixed(2);
+  }
+
   const progFill = document.getElementById('prog-fill');
   if (progFill) progFill.style.width = progress.toFixed(1) + '%';
-  
+
   const p = getPhase(progress);
   if (p !== curPhase) activatePhase(p);
 }
