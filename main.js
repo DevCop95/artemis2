@@ -646,7 +646,9 @@ window.addEventListener('keydown', e => {
 function tick() {
   requestAnimationFrame(tick);
 
-  progress += (target - progress) * 0.03;
+  const isReversing = target < progress;
+  const lerpSpeed = isReversing ? 0.015 : 0.03;
+  progress += (target - progress) * lerpSpeed;
   if (Math.abs(target - progress) < 0.001) progress = target;
 
   // Apply interpolated values directly
