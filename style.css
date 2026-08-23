@@ -39,6 +39,45 @@ body {
 #canvas-container {
   position: absolute; inset: 0; z-index: 1;
 }
+#webgl-warning {
+  position: fixed; left: 50%; top: 72px; z-index: 80;
+  transform: translateX(-50%);
+  display: flex; align-items: center; gap: 0.65rem;
+  max-width: min(620px, calc(100vw - 32px));
+  padding: 0.65rem 0.9rem;
+  border: 1px solid var(--gold-30);
+  border-radius: 4px;
+  background: rgba(5, 8, 16, 0.88);
+  color: var(--ink-70);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  line-height: 1.35;
+  backdrop-filter: blur(8px);
+}
+#webgl-warning strong { color: var(--gold); white-space: nowrap; }
+#webgl-warning[hidden] { display: none; }
+#asset-warning {
+  position: fixed; left: 50%; top: 132px; z-index: 81;
+  transform: translateX(-50%);
+  display: flex; align-items: center; gap: 0.8rem;
+  max-width: min(520px, calc(100vw - 32px));
+  padding: 0.55rem 0.8rem;
+  border: 1px solid rgba(224, 40, 40, 0.45);
+  border-radius: 4px;
+  background: rgba(5, 8, 16, 0.9);
+  color: var(--ink-70);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.65rem;
+  line-height: 1.35;
+  backdrop-filter: blur(8px);
+}
+#asset-warning[hidden] { display: none; }
+#asset-retry {
+  border: 1px solid var(--gold-30); border-radius: 3px;
+  padding: 0.35rem 0.55rem; background: transparent;
+  color: var(--gold); font: inherit; cursor: pointer;
+}
 
 /* ══════════════════════════════════════════════
    VIGNETTE
@@ -81,6 +120,30 @@ body {
   width: 100%; height: 100%;
   pointer-events: none;
 }
+
+#mission-controls {
+  position: fixed; right: 28px; bottom: 78px; z-index: 20;
+  display: flex; gap: 6px;
+  pointer-events: auto;
+}
+#mission-controls button {
+  width: 34px; height: 30px;
+  border: 1px solid var(--ink-35);
+  border-radius: 3px;
+  background: rgba(5, 8, 16, 0.78);
+  color: var(--ink-70);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 15px; line-height: 1;
+  cursor: pointer;
+  transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+#mission-controls button:hover,
+#mission-controls button:focus-visible {
+  border-color: var(--gold);
+  background: rgba(201, 168, 76, 0.12);
+  color: var(--gold);
+}
+#mission-controls button:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
 
 /* ══════════════════════════════════════════════
    HEADER
@@ -140,11 +203,15 @@ body {
   transform: translateY(-50%);
   display: flex; flex-direction: column;
   align-items: flex-end; gap: 0;
+  pointer-events: auto;
 }
 .snav-item {
   display: flex; align-items: center; gap: 8px;
   padding: 4px 0;
+  border: 0; background: transparent; color: inherit;
+  font: inherit; cursor: pointer;
 }
+.snav-item:focus-visible { outline: 2px solid var(--gold); outline-offset: 4px; }
 .snav-num {
   font-family: 'IBM Plex Mono', monospace;
   font-size: 8px; letter-spacing: 0.1em;
@@ -267,7 +334,7 @@ body {
    TELEMETRY
    ═════════════*/
 #telem {
-  position: absolute;
+  position: absolute; z-index: 15;
   bottom: 34px; left: 28px; right: 64px;
   display: flex; align-items: center;
   background: var(--glass);
@@ -575,7 +642,7 @@ body {
 /* ── Large screens (≥ 1025px): crew section clears telemetry bar ── */
 @media (min-width: 1025px) {
   .phase-center {
-    top: 44% !important;
+    top: 38% !important;
     padding-bottom: 90px; /* clearance above the telemetry strip */
   }
 }
@@ -583,6 +650,11 @@ body {
 @media (max-width: 1024px) {
   .phase { width: min(380px, 44vw); }
   .ph-hed { font-size: clamp(2rem, 6vw, 4rem); }
+  .phase-center {
+    max-height: calc(100vh - 220px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
 }
 
 /* ââ Mobile (â¤ 768px) ââ */
@@ -598,7 +670,7 @@ body {
   .brand-agency { font-size: 8px; }
   .brand-mission { font-size: 12px; }
   #hdr-crew { display: none; }
-  #hdr-live {
+#hdr-live {
     font-size: 8px;
     gap: 5px;
     flex-shrink: 0;
@@ -654,6 +726,9 @@ body {
     top: 42% !important; transform: translateY(-50%) !important;
     align-items: flex-start;
     text-align: left;
+    max-height: calc(100vh - 190px);
+    overflow-y: auto;
+    scrollbar-width: thin;
   }
   .phase-center::before,
   .phase-center .ph-data {
@@ -685,6 +760,8 @@ body {
     right: 50%;
     transform: translateX(50%);
   }
+
+  #mission-controls { right: 14px; bottom: max(128px, calc(88px + env(safe-area-inset-bottom, 42px))); }
 
   /* Crew Grid - columna Ãºnica en mÃ³vil */
   .crew-grid {
@@ -743,6 +820,18 @@ body {
   /* Progress bar label */
   #prog-label { display: none; }
 }
+#lang-toggle {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--f-mono); font-size: 11px; font-weight: 500;
+  letter-spacing: 0.1em;
+}
+.lang-btn {
+  border: 0; padding: 0; background: transparent;
+  color: var(--ink-35); font: inherit; letter-spacing: inherit;
+  cursor: pointer; transition: color 0.3s ease;
+}
+.lang-btn[aria-pressed="true"] { color: var(--gold); }
+.lang-btn:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
 
 
 /* Accessibility (A11y) */

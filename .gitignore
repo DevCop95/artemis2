@@ -31,5 +31,6 @@ Thumbs.db
 
 # Gemini CLI / AI Temp files
 .gemini/
+.playwright-mcp/
 ARTEMIS_II_CONTEXT.md
 script.js

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import anime from 'animejs/lib/anime.es.js';
+import { clamp, getKeyframeVal, lerp } from './mission-core.mjs';
 
 // ══════════════════════════════════════════════
 // GLOBAL STATE & i18n
@@ -7,11 +8,15 @@ import anime from 'animejs/lib/anime.es.js';
 window.appLang = 'es';
 
 function setLanguage(lang) {
+  if (!['es', 'en'].includes(lang)) return;
   window.appLang = lang;
+  document.documentElement.lang = lang;
   
   // Update toggle buttons UI
-  document.getElementById('btn-es').style.color = lang === 'es' ? 'var(--gold)' : 'var(--ink-35)';
-  document.getElementById('btn-en').style.color = lang === 'en' ? 'var(--gold)' : 'var(--ink-35)';
+  const btnEs = document.getElementById('btn-es');
+  const btnEn = document.getElementById('btn-en');
+  if (btnEs) btnEs.setAttribute('aria-pressed', String(lang === 'es'));
+  if (btnEn) btnEn.setAttribute('aria-pressed', String(lang === 'en'));
   
   // Update all static HTML elements with data-lang attributes
   document.querySelectorAll('[data-es]').forEach(el => {
@@ -19,6 +24,14 @@ function setLanguage(lang) {
       el.innerHTML = el.getAttribute(`data-${lang}`);
     }
   });
+
+  document.querySelectorAll('[data-label-es]').forEach(el => {
+    el.setAttribute('aria-label', el.getAttribute(`data-label-${lang}`));
+  });
+  const closeModalButton = document.getElementById('close-modal');
+  if (closeModalButton) {
+    closeModalButton.setAttribute('aria-label', lang === 'en' ? 'Close dialog' : 'Cerrar modal');
+  }
   
   // Update dynamic telemetry
   if (typeof curPhase !== 'undefined' && curPhase >= 0) {
@@ -52,22 +65,49 @@ THREE.DefaultLoadingManager.onProgress = function(url, itemsLoaded, itemsTotal) 
   }
 };
 
-THREE.DefaultLoadingManager.onLoad = function() {
+let loadingFinished = false;
+function finishLoading() {
+  if (loadingFinished) return;
+  loadingFinished = true;
+
   const loadingEl = document.getElementById('loading');
-  if (loadingEl) {
-    loadingEl.style.opacity = '0';
-    setTimeout(() => {
-      loadingEl.style.display = 'none';
-      
-      const uiLayer = document.getElementById('ui');
-      if (uiLayer) {
-        uiLayer.style.display = 'flex';
-        uiLayer.style.opacity = 0;
-        anime({ targets: uiLayer, opacity: 1, duration: 1500, easing: 'linear' });
-      }
-    }, 1000); // Bloquea 1 segundo para asegurar carga
-  }
+  if (!loadingEl) return;
+  loadingEl.style.opacity = '0';
+  setTimeout(() => {
+    loadingEl.style.display = 'none';
+
+    const uiLayer = document.getElementById('ui');
+    if (uiLayer) {
+      uiLayer.style.display = 'flex';
+      uiLayer.style.opacity = 0;
+      anime({ targets: uiLayer, opacity: 1, duration: 1500, easing: 'linear' });
+    }
+  }, 1000);
+}
+
+THREE.DefaultLoadingManager.onLoad = function() {
+  finishLoading();
 };
+
+THREE.DefaultLoadingManager.onError = function(url) {
+  const assetWarning = document.getElementById('asset-warning');
+  if (assetWarning) assetWarning.hidden = false;
+  const loadingTextEl = document.getElementById('loading-text');
+  if (loadingTextEl) {
+    loadingTextEl.textContent = window.appLang === 'en'
+      ? 'Some telemetry resources are unavailable. Continuing...'
+      : 'Algunos recursos de telemetría no están disponibles. Continuando...';
+  }
+  // Un recurso remoto fallido no debe dejar bloqueada toda la experiencia.
+  setTimeout(finishLoading, 700);
+};
+
+document.getElementById('asset-retry')?.addEventListener('click', () => {
+  window.location.reload();
+});
+
+// Fallback para redes lentas o servidores de texturas que no responden.
+setTimeout(finishLoading, 12000);
 
 // ══════════════════════════════════════════════
 // NOISE — fractal Brownian motion (unchanged)
@@ -104,13 +144,102 @@ function makeClouds() {
   ctx.putImageData(img, 0, 0); return new THREE.CanvasTexture(cv);
 }
 
+// Mapas lunares locales: evita depender de buckets externos que pueden
+// bloquear las texturas con respuestas 403 o desaparecer sin aviso.
+function makeMoonMaps() {
+  const W = 512, H = 256;
+  const colorCanvas = document.createElement('canvas');
+  const bumpCanvas = document.createElement('canvas');
+  colorCanvas.width = bumpCanvas.width = W;
+  colorCanvas.height = bumpCanvas.height = H;
+
+  const colorCtx = colorCanvas.getContext('2d');
+  const bumpCtx = bumpCanvas.getContext('2d');
+  const colorImg = colorCtx.createImageData(W, H);
+  const bumpImg = bumpCtx.createImageData(W, H);
+  const craters = Array.from({ length: 85 }, (_, i) => ({
+    x: h2(i * 1.71, 4.2) * W,
+    y: h2(i * 2.13, 8.7) * H,
+    radius: 2.5 + h2(i * 3.37, 12.4) * 16,
+    depth: 8 + h2(i * 4.19, 3.8) * 22,
+  }));
+
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const noise = fbm(x / W * 14 + 12, y / H * 7 + 18, 4);
+    let craterEffect = 0;
+
+    for (const crater of craters) {
+      let dx = Math.abs(x - crater.x);
+      dx = Math.min(dx, W - dx); // continuidad en el meridiano de la textura
+      const dy = y - crater.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      const bowl = Math.max(0, 1 - distance / (crater.radius * 1.45));
+      const rim = Math.max(0, 1 - Math.abs(distance - crater.radius) / (crater.radius * 0.2));
+      craterEffect += -crater.depth * bowl * bowl + crater.depth * 0.45 * rim;
+    }
+
+    const base = 112 + noise * 78;
+    const shade = Math.max(48, Math.min(218, Math.round(base + craterEffect)));
+    const index = (y * W + x) * 4;
+    colorImg.data[index] = Math.min(255, shade + 10);
+    colorImg.data[index + 1] = shade;
+    colorImg.data[index + 2] = Math.max(0, shade - 8);
+    colorImg.data[index + 3] = 255;
+
+    const bump = Math.max(0, Math.min(255, Math.round(128 + craterEffect * 2 + (noise - 0.5) * 35)));
+    bumpImg.data[index] = bump;
+    bumpImg.data[index + 1] = bump;
+    bumpImg.data[index + 2] = bump;
+    bumpImg.data[index + 3] = 255;
+  }
+
+  colorCtx.putImageData(colorImg, 0, 0);
+  bumpCtx.putImageData(bumpImg, 0, 0);
+  return {
+    color: new THREE.CanvasTexture(colorCanvas),
+    displacement: new THREE.CanvasTexture(bumpCanvas),
+  };
+}
+
 // ══════════════════════════════════════════════
 // THREE.JS SCENE
 // ══════════════════════════════════════════════
-const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-renderer.setSize(innerWidth, innerHeight);
-document.getElementById('canvas-container').appendChild(renderer.domElement);
+function hasWebGLSupport() {
+  const canvas = document.createElement('canvas');
+  return Boolean(
+    canvas.getContext('webgl2', { failIfMajorPerformanceCaveat: false }) ||
+    canvas.getContext('webgl', { failIfMajorPerformanceCaveat: false }) ||
+    canvas.getContext('experimental-webgl', { failIfMajorPerformanceCaveat: false })
+  );
+}
+
+const lowPowerDevice = window.matchMedia('(max-width: 768px)').matches
+  || (navigator.hardwareConcurrency || 8) <= 4;
+const QUALITY = {
+  pixelRatio: lowPowerDevice ? 1 : Math.min(devicePixelRatio, 1.75),
+  starCount: lowPowerDevice ? 2600 : 6000,
+  earthSegments: lowPowerDevice ? 48 : 64,
+  moonSegments: lowPowerDevice ? 80 : 112,
+};
+
+let renderer = null;
+if (hasWebGLSupport()) {
+  try {
+    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setPixelRatio(QUALITY.pixelRatio);
+    renderer.setSize(innerWidth, innerHeight);
+    document.getElementById('canvas-container').appendChild(renderer.domElement);
+  } catch (error) {
+    console.warn('WebGL no disponible; se activa el modo 2D.', error);
+  }
+}
+
+if (!renderer) {
+  const warning = document.getElementById('webgl-warning');
+  if (warning) warning.hidden = false;
+  // En modo 2D no necesitamos esperar las texturas 3D para mostrar la interfaz.
+  setTimeout(finishLoading, 0);
+}
 
 const scene = new THREE.Scene();
 scene.fog = new THREE.FogExp2(0x000608, 0.0005);
@@ -134,8 +263,8 @@ const sSprite = (() => {
   g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(.15, 'rgba(200,220,255,.8)'); g.addColorStop(1, 'rgba(0,0,0,0)');
   x.fillStyle = g; x.fillRect(0, 0, 32, 32); return new THREE.CanvasTexture(c);
 })();
-const sPos = new Float32Array(6000 * 3);
-for (let i = 0; i < 6000; i++) {
+const sPos = new Float32Array(QUALITY.starCount * 3);
+for (let i = 0; i < QUALITY.starCount; i++) {
   const r = 200 + Math.random() * 300, t = Math.random() * Math.PI * 2, p = Math.acos(2 * Math.random() - 1);
   sPos[i * 3] = r * Math.sin(p) * Math.cos(t); sPos[i * 3 + 1] = r * Math.cos(p); sPos[i * 3 + 2] = r * Math.sin(p) * Math.sin(t);
 }
@@ -155,7 +284,7 @@ const earthBumpMap = textureLoader.load('https://unpkg.com/three-globe/example/i
 
 const earthGrp = new THREE.Group();
 const earthMesh = new THREE.Mesh(
-  new THREE.SphereGeometry(100, 64, 64),
+  new THREE.SphereGeometry(100, QUALITY.earthSegments, QUALITY.earthSegments),
   new THREE.MeshPhongMaterial({ 
     map: earthColorMap, 
     bumpMap: earthBumpMap,
@@ -178,14 +307,15 @@ earthGrp.position.set(0, -102, -10);
 earthGrp.rotation.z = 0.41;
 scene.add(earthGrp);
 
-// ── Moon (High-Res Textures via URL) ──
-const moonColorMap = textureLoader.load('https://s3-us-west-2.amazonaws.com/s.cdpn.io/17271/lroc_color_poles_1k.jpg');
-const moonDispMap = textureLoader.load('https://s3-us-west-2.amazonaws.com/s.cdpn.io/17271/ldem_3_8bit.jpg');
+// ── Moon (texturas procedurales locales) ──
+const moonMaps = makeMoonMaps();
+const moonColorMap = moonMaps.color;
+const moonDispMap = moonMaps.displacement;
 
 const moonGrp = new THREE.Group();
 const moonMesh = new THREE.Mesh(
   // Mucha mayor resolución (128x128) para que el displacementMap distorsione bien la malla
-  new THREE.SphereGeometry(27, 128, 128),
+  new THREE.SphereGeometry(27, QUALITY.moonSegments, QUALITY.moonSegments),
   new THREE.MeshPhongMaterial({ 
     color: 0xffffff,
     map: moonColorMap,
@@ -403,6 +533,7 @@ const fireScale = { s: 0 }; // Proxy for engine fire scale
 let t = 0;
 function loop() {
   requestAnimationFrame(loop);
+  if (!renderer) return;
   t += 0.003;
 
   earthMesh.rotation.y  = t * 0.40;
@@ -425,6 +556,7 @@ function loop() {
 loop();
 
 window.addEventListener('resize', () => {
+  if (!renderer) return;
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
@@ -434,15 +566,16 @@ window.addEventListener('resize', () => {
 // PHASE DATA
 // ══════════════════════════════════════════════
 const PHASE_DATA = [
-  { earth: '0 km',        moon: '384,400 km', vel: '0 km/h',      met: 'T-0:00',   status: 'PREPARANDO LANZAMIENTO' },
-  { earth: '310,000 km',  moon: '74,400 km',  vel: '3,862 km/h',  met: 'T+48h',    status: 'TRÁNSITO INTERLUNAR' },
-  { earth: '354,000 km',  moon: '30,400 km',  vel: '4,210 km/h',  met: 'T+96h',    status: 'ESFERA DE INFLUENCIA' },
-  { earth: '406,667 km',  moon: '6,545 km',   vel: '5,130 km/h',  met: 'T+132h',   status: 'SOBREVUELO LUNAR' },
-  { earth: '251,900 km',  moon: '132,500 km', vel: '40,000 km/h', met: 'T+192h',   status: 'RETORNO A LA TIERRA' },
-  { earth: '0 km',        moon: '384,400 km', vel: '0 km/h',      met: 'T+241h',   status: 'MISIÓN COMPLETADA' },
+  { earth: '0 km',        moon: '384,400 km', vel: '0 km/h',      met: 'T-0:00',   status: { es: 'PREPARANDO LANZAMIENTO', en: 'PREPARING LAUNCH' } },
+  { earth: '310,000 km',  moon: '74,400 km',  vel: '3,862 km/h',  met: 'T+48h',    status: { es: 'TRÁNSITO INTERLUNAR', en: 'INTERLUNAR TRANSIT' } },
+  { earth: '354,000 km',  moon: '30,400 km',  vel: '4,210 km/h',  met: 'T+96h',    status: { es: 'ESFERA DE INFLUENCIA', en: 'SPHERE OF INFLUENCE' } },
+  { earth: '406,667 km',  moon: '6,545 km',   vel: '5,130 km/h',  met: 'T+132h',   status: { es: 'SOBREVUELO LUNAR', en: 'LUNAR FLYBY' } },
+  { earth: '251,900 km',  moon: '132,500 km', vel: '40,000 km/h', met: 'T+192h',   status: { es: 'RETORNO A LA TIERRA', en: 'RETURN TO EARTH' } },
+  { earth: '0 km',        moon: '384,400 km', vel: '0 km/h',      met: 'T+241h',   status: { es: 'MISIÓN COMPLETADA', en: 'MISSION COMPLETE' } },
 ];
 const PHASE_AT = [0, 17, 34, 51, 68, 85];
 let curPhase = -1;
+let telemetryUpdateId = 0;
 
 function getPhase(p) {
   for (let i = PHASE_AT.length - 1; i >= 0; i--) if (p >= PHASE_AT[i]) return i;
@@ -451,13 +584,19 @@ function getPhase(p) {
 
 function updateTelemetry(idx) {
   const d = PHASE_DATA[idx];
+  if (!d) return;
+  const updateId = ++telemetryUpdateId;
   [['tl-earth','earth'], ['tl-moon','moon'], ['tl-vel','vel'], ['tl-met','met']].forEach(([id, key]) => {
     const el = document.getElementById(id); if (!el) return;
     el.style.opacity = '0';
-    setTimeout(() => { el.textContent = d[key]; el.style.opacity = '1'; }, 230);
+    setTimeout(() => {
+      if (updateId !== telemetryUpdateId) return;
+      el.textContent = d[key];
+      el.style.opacity = '1';
+    }, 230);
   });
   const sl = document.getElementById('live-label');
-  if (sl) sl.textContent = d.status;
+  if (sl) sl.textContent = d.status[window.appLang] || d.status.es;
 }
 
 function activatePhase(np) {
@@ -465,7 +604,12 @@ function activatePhase(np) {
   const op = curPhase; curPhase = np;
 
   // Update nav dots
-  document.querySelectorAll('.snav-item').forEach((el, i) => el.classList.toggle('active', i === np));
+  document.querySelectorAll('.snav-item').forEach((el, i) => {
+    const isActive = i === np;
+    el.classList.toggle('active', isActive);
+    if (isActive) el.setAttribute('aria-current', 'step');
+    else el.removeAttribute('aria-current');
+  });
 
   // Animate phase blocks using direct AnimeJS removal of previous animations
   document.querySelectorAll('.phase').forEach((el, i) => {
@@ -485,36 +629,6 @@ function activatePhase(np) {
 }
 
 // ══════════════════════════════════════════════
-// INTERPOLATION HELPERS
-// ══════════════════════════════════════════════
-function lerp(a, b, t) { return a + (b - a) * t; }
-function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
-
-function getKeyframeVal(progress, kfs) {
-  let i = 0;
-  for (i = kfs.length - 1; i >= 0; i--) {
-    if (progress >= kfs[i][0]) break;
-  }
-  const kf0 = kfs[i];
-  const kf1 = kfs[i + 1];
-  if (!kf1) return kf0[1];
-  const t = (progress - kf0[0]) / (kf1[0] - kf0[0]);
-  const v0 = kf0[1];
-  const v1 = kf1[1];
-  if (typeof v0 === 'object' && v0 !== null) {
-    return {
-      x: lerp(v0.x, v1.x, t),
-      y: lerp(v0.y, v1.y, t),
-      z: lerp(v0.z, v1.z, t),
-      lx: v0.lx !== undefined ? lerp(v0.lx, v1.lx, t) : undefined,
-      ly: v0.ly !== undefined ? lerp(v0.ly, v1.ly, t) : undefined,
-      lz: v0.lz !== undefined ? lerp(v0.lz, v1.lz, t) : undefined
-    };
-}
-  return lerp(v0, v1, t);
-}
-
-// ══════════════════════════════════════════════
 // KEYFRAME DEFINITIONS (% progress, value, easing)
 // ══════════════════════════════════════════════
 const earthKF = [
@@ -526,9 +640,10 @@ const earthKF = [
   [59,  { x: -150, y: -30, z: -600 }],
   [65,  { x: -80, y: 20, z: -500 }],
   [72,  { x: -120, y: 60, z: -350 }],
-  [80,  { x: -250, y: -60, z: -100 }],
-  [85,  { x: -70, y: -60, z: -40 }],
-  [100, { x: -70, y: -60, z: -40 }]
+  [80,  { x: -160, y: -20, z: -200 }],
+  [85,  { x: -120, y: -40, z: -140 }],
+  [92,  { x: -90, y: -50, z: -110 }],
+  [100, { x: -70, y: -60, z: -100 }]
 ];
 
 const moonKF = [
@@ -550,13 +665,14 @@ const rGrpPosKF = [
   [5,   { x: 0, y: 20, z: 0 }],
   [20,  { x: 0, y: 20, z: 0 }],
   [57,  { x: 0, y: 0, z: 0 }],
-  [60,  { x: 5, y: -5, z: 10 }],
-  [65,  { x: 8, y: -8, z: 15 }],
-  [72,  { x: 10, y: -5, z: 20 }],
-  [78,  { x: 15, y: 0, z: 30 }],
-  [82,  { x: 20, y: 0, z: 50 }],
-  [86,  { x: 0, y: 0, z: 0 }],
-  [100, { x: -30, y: 0, z: -5 }]
+  [60,  { x: 3, y: -2, z: 6 }],
+  [65,  { x: 6, y: -3, z: 11 }],
+  [72,  { x: 8, y: -1, z: 16 }],
+  [78,  { x: 9, y: 1, z: 20 }],
+  [82,  { x: 8, y: 1, z: 22 }],
+  [86,  { x: 6, y: 1, z: 21 }],
+  [92,  { x: 2, y: 0, z: 16 }],
+  [100, { x: -6, y: 0, z: 8 }]
 ];
 
 const rGrpRotKF = [
@@ -583,11 +699,11 @@ const camKF = [
   [60,  { x: -20, y: 10, z: 40, lx: 20, ly: -10, lz: 0 }],
   [65,  { x: -18, y: 12, z: 45, lx: 15, ly: -5, lz: 10 }],
   [72,  { x: -10, y: 15, z: 50, lx: 10, ly: 0, lz: 15 }],
-  [78,  { x: 0, y: 10, z: 60, lx: -20, ly: 0, lz: 20 }],
-  [82,  { x: 0, y: 5, z: 70, lx: -35, ly: 0, lz: 10 }],
-  [86,  { x: 0, y: 0, z: 80, lx: -50, ly: 0, lz: 0 }],
-  [92,  { x: -5, y: 5, z: 50, lx: -45, ly: 0, lz: -5 }],
-  [100, { x: -10, y: 10, z: 30, lx: -40, ly: 0, lz: -10 }]
+  [78,  { x: 0, y: 10, z: 55, lx: 9, ly: 1, lz: 20 }],
+  [82,  { x: 0, y: 8, z: 52, lx: 8, ly: 1, lz: 22 }],
+  [86,  { x: 0, y: 7, z: 50, lx: 6, ly: 1, lz: 21 }],
+  [92,  { x: -4, y: 6, z: 44, lx: 2, ly: 0, lz: 16 }],
+  [100, { x: -8, y: 6, z: 36, lx: -6, ly: 0, lz: 8 }]
 ];
 
 const fireKF = [
@@ -614,7 +730,8 @@ const speedLinesKF = [
   [5,   0.35],
   [10,  0.35],
   [60,  0],
-  [80,  0.4],
+  [78,  0.12],
+  [80,  0.18],
   [85,  0],
   [100, 0]
 ];
@@ -625,22 +742,56 @@ const speedLinesKF = [
 // ══════════════════════════════════════════════
 let progress = 0, target = 0;
 
+function setTarget(nextTarget) {
+  target = clamp(nextTarget, 0, 100);
+}
+
+function advanceMission() {
+  setTarget(target + 5);
+}
+
+function rewindMission() {
+  setTarget(target - 5);
+}
+
 window.addEventListener('wheel', e => {
-  target = clamp(target + e.deltaY * 0.02, 0, 100);
+  // La navegación visual está invertida: arriba avanza y abajo retrocede.
+  setTarget(target - e.deltaY * 0.02);
 }, { passive: true });
 
 let tY = null;
 window.addEventListener('touchstart', e => { tY = e.touches[0].clientY; }, { passive: true });
 window.addEventListener('touchmove', e => {
   if (tY === null) return;
-  target = clamp(target + (tY - e.touches[0].clientY) * 0.08, 0, 100);
+  setTarget(target - (tY - e.touches[0].clientY) * 0.08);
   tY = e.touches[0].clientY;
 }, { passive: true });
 window.addEventListener('touchend', () => { tY = null; });
 
 window.addEventListener('keydown', e => {
-  if (e.key === 'ArrowUp'   || e.key === 'PageUp'   || e.key === ' ') target = clamp(target + 5, 0, 100);
-  if (e.key === 'ArrowDown' || e.key === 'PageDown')                     target = clamp(target - 5, 0, 100);
+  if (document.getElementById('crew-modal')?.style.display === 'flex') return;
+
+  const advances = e.key === 'ArrowUp' || e.key === 'PageUp' || e.key === ' ';
+  const rewinds = e.key === 'ArrowDown' || e.key === 'PageDown';
+  if (!advances && !rewinds) return;
+
+  e.preventDefault();
+  // En esta experiencia, arriba/desplazar hacia arriba = avanzar;
+  // abajo = retroceder.
+  if (advances) advanceMission();
+  else rewindMission();
+});
+
+document.getElementById('mission-forward')?.addEventListener('click', advanceMission);
+document.getElementById('mission-back')?.addEventListener('click', rewindMission);
+
+document.querySelectorAll('.snav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    const phaseIndex = Number(item.dataset.i);
+    if (Number.isInteger(phaseIndex) && PHASE_AT[phaseIndex] !== undefined) {
+      setTarget(PHASE_AT[phaseIndex]);
+    }
+  });
 });
 
 function tick() {
@@ -648,7 +799,9 @@ function tick() {
 
   const isReversing = target < progress;
   const lerpSpeed = isReversing ? 0.015 : 0.03;
-  progress += (target - progress) * lerpSpeed;
+  const maxProgressStep = isReversing ? 0.35 : 0.8;
+  const progressStep = clamp((target - progress) * lerpSpeed, -maxProgressStep, maxProgressStep);
+  progress += progressStep;
   if (Math.abs(target - progress) < 0.001) progress = target;
 
   // Apply interpolated values directly
@@ -668,6 +821,15 @@ function tick() {
   cam.x = camPos.x; cam.y = camPos.y; cam.z = camPos.z;
   if (camPos.lx !== undefined) {
     cam.lx = camPos.lx; cam.ly = camPos.ly; cam.lz = camPos.lz;
+  }
+
+  // Después del blackout la cámara recupera el cohete gradualmente para
+  // evitar que salga del encuadre o parezca acelerar de forma brusca.
+  if (progress > 72) {
+    const followT = clamp((progress - 72) / 6, 0, 1);
+    cam.lx = lerp(cam.lx, rPos.x, followT);
+    cam.ly = lerp(cam.ly, rPos.y, followT);
+    cam.lz = lerp(cam.lz, rPos.z, followT);
   }
 
   const fire = getKeyframeVal(progress, fireKF);
@@ -726,8 +888,11 @@ document.querySelectorAll('.crew-member').forEach(card => {
     document.getElementById('modal-desc').textContent = card.getAttribute(`data-desc-${lang}`);
     
     // Animate In
-    modal.removeAttribute('aria-hidden');
+    anime.remove(modal);
+    anime.remove('.modal-content');
+    modal.setAttribute('aria-hidden', 'false');
     modal.style.display = 'flex';
+    modal.querySelector('#modal-img').alt = card.dataset.name;
     anime({ targets: modal, opacity: [0, 1], duration: 300, easing: 'easeOutQuad' });
     anime({
       targets: '.modal-content',
@@ -750,6 +915,7 @@ document.querySelectorAll('.crew-member').forEach(card => {
 });
 
 function closeModal() {
+  if (!modal || modal.style.display !== 'flex') return;
   const cardToFocus = window.activeCrewCard;
   window.activeCrewCard = null;
   // Move focus out BEFORE the modal gets aria-hidden to avoid browser warning

@@ -46,6 +46,16 @@
   <!-- 3D Canvas -->
   <div id="canvas-container"></div>
 
+  <!-- Aviso accesible para entornos sin WebGL -->
+  <div id="webgl-warning" role="status" aria-live="polite" hidden>
+    <strong data-es="Modo 2D activo" data-en="2D mode active">Modo 2D activo</strong>
+    <span data-es="El navegador bloqueó WebGL; la narrativa y los controles siguen disponibles." data-en="The browser blocked WebGL; the narrative and controls remain available.">El navegador bloqueó WebGL; la narrativa y los controles siguen disponibles.</span>
+  </div>
+  <div id="asset-warning" role="alert" aria-live="assertive" hidden>
+    <span data-es="No se pudo cargar un recurso 3D." data-en="A 3D resource could not be loaded.">No se pudo cargar un recurso 3D.</span>
+    <button id="asset-retry" type="button" data-es="Reintentar" data-en="Retry">Reintentar</button>
+  </div>
+
   <!-- Vignette -->
   <div id="vignette"></div>
 
@@ -73,20 +83,22 @@
         <span id="live-label">PREPARANDO LANZAMIENTO</span>
         <div class="brand-sep" style="margin: 0 12px;"></div>
         <!-- Language Toggle -->
-        <div id="lang-toggle" style="cursor: pointer; font-family: var(--f-mono); font-size: 11px; font-weight: 500; letter-spacing: 0.1em;">
-          <span id="btn-es" style="color: var(--gold); transition: color 0.3s;">ES</span> <span style="color: var(--ink-35);">|</span> <span id="btn-en" style="color: var(--ink-35); transition: color 0.3s;">EN</span>
+        <div id="lang-toggle" role="group" aria-label="Idioma">
+          <button type="button" id="btn-es" class="lang-btn" aria-pressed="true">ES</button>
+          <span aria-hidden="true">|</span>
+          <button type="button" id="btn-en" class="lang-btn" aria-pressed="false">EN</button>
         </div>
       </div>
     </header>
 
     <!-- Phase Sidebar Nav -->
     <nav id="sidenav">
-      <div class="snav-item active" data-i="0"><span class="snav-num">01</span><span class="snav-dot"></span></div><div class="snav-conn"></div>
-      <div class="snav-item" data-i="1"><span class="snav-num">02</span><span class="snav-dot"></span></div><div class="snav-conn"></div>
-      <div class="snav-item" data-i="2"><span class="snav-num">03</span><span class="snav-dot"></span></div><div class="snav-conn"></div>
-      <div class="snav-item" data-i="3"><span class="snav-num">04</span><span class="snav-dot"></span></div><div class="snav-conn"></div>
-      <div class="snav-item" data-i="4"><span class="snav-num">05</span><span class="snav-dot"></span></div><div class="snav-conn"></div>
-      <div class="snav-item" data-i="5"><span class="snav-num">06</span><span class="snav-dot"></span></div>
+      <button class="snav-item active" type="button" data-i="0" aria-label="Ir a la fase 1" aria-current="step"><span class="snav-num">01</span><span class="snav-dot"></span></button><div class="snav-conn"></div>
+      <button class="snav-item" type="button" data-i="1" aria-label="Ir a la fase 2"><span class="snav-num">02</span><span class="snav-dot"></span></button><div class="snav-conn"></div>
+      <button class="snav-item" type="button" data-i="2" aria-label="Ir a la fase 3"><span class="snav-num">03</span><span class="snav-dot"></span></button><div class="snav-conn"></div>
+      <button class="snav-item" type="button" data-i="3" aria-label="Ir a la fase 4"><span class="snav-num">04</span><span class="snav-dot"></span></button><div class="snav-conn"></div>
+      <button class="snav-item" type="button" data-i="4" aria-label="Ir a la fase 5"><span class="snav-num">05</span><span class="snav-dot"></span></button><div class="snav-conn"></div>
+      <button class="snav-item" type="button" data-i="5" aria-label="Ir a la fase 6"><span class="snav-num">06</span><span class="snav-dot"></span></button>
     </nav>
 
     <!-- Phase Text Blocks -->
@@ -144,6 +156,7 @@
         
         <div class="crew-grid">
           <div class="crew-member" tabindex="0" role="button" aria-label="Ver perfil" data-name="Reid Wiseman" data-img="./img/reidw.jpg" 
+               data-label-es="Ver perfil" data-label-en="View profile"
                data-role-es="Comandante" data-role-en="Commander"
                data-desc-es="Edad: 50 años. Origen: Baltimore, Maryland. Piloto de prueba naval y aviador condecorado. Ingresó a la NASA en 2009. Pasó 165 días en la ISS en 2014 a bordo de una Soyuz. Fue jefe de astronautas de la NASA."
                data-desc-en="Age: 50. Origin: Baltimore, Maryland. Decorated naval test pilot and aviator. Joined NASA in 2009. Spent 165 days on the ISS in 2014 aboard a Soyuz. Former Chief of the Astronaut Office.">
@@ -156,6 +169,7 @@
           </div>
           
           <div class="crew-member" tabindex="0" role="button" aria-label="Ver perfil" data-name="Victor Glover" data-img="./img/victorg.jpg" 
+               data-label-es="Ver perfil" data-label-en="View profile"
                data-role-es="Piloto" data-role-en="Pilot"
                data-desc-es="Edad: 49 años. Origen: Pomona, California. Capitán de la Marina y piloto de pruebas. Pilotó la misión SpaceX Crew-1 a la ISS en 2020. Primera persona afroamericana en viajar al espacio profundo en la historia."
                data-desc-en="Age: 49. Origin: Pomona, California. Navy Captain and test pilot. Piloted the SpaceX Crew-1 mission to the ISS in 2020. First African-American person to travel into deep space in history.">
@@ -168,6 +182,7 @@
           </div>
           
           <div class="crew-member" tabindex="0" role="button" aria-label="Ver perfil" data-name="Christina Koch" data-img="./img/christinak.jpg" 
+               data-label-es="Ver perfil" data-label-en="View profile"
                data-role-es="Especialista de misión" data-role-en="Mission Specialist"
                data-desc-es="Origen: Jacksonville, Carolina del Norte. Ingeniera eléctrica. Posee el récord femenino de 328 días consecutivos en el espacio. Primera mujer en volar a la órbita de la Luna en la historia de la humanidad."
                data-desc-en="Origin: Jacksonville, North Carolina. Electrical engineer. Holds the record for the longest single spaceflight by a woman (328 days). First woman to fly to lunar orbit in human history.">
@@ -180,6 +195,7 @@
           </div>
           
           <div class="crew-member" tabindex="0" role="button" aria-label="Ver perfil" data-name="Jeremy Hansen" data-img="./img/jeremyh.jpg" 
+               data-label-es="Ver perfil" data-label-en="View profile"
                data-role-es="Especialista de misión (CSA)" data-role-en="Mission Specialist (CSA)"
                data-desc-es="Origen: London, Ontario (Canadá). Piloto de combate de la Fuerza Aérea. Primer viaje al espacio. Entrenado como aquanauta y cavenauta. Primer astronauta no estadounidense en participar en una misión lunar."
                data-desc-en="Origin: London, Ontario (Canada). Air Force fighter pilot. First trip to space. Trained as an aquanaut and cavenaut. First non-American astronaut to participate in a lunar mission.">
@@ -229,7 +245,12 @@
       <div class="sh-mouse">
         <div class="sh-wheel"></div>
       </div>
-      <span data-es="Desplaza para avanzar" data-en="Scroll to advance">Desplaza para avanzar</span>
+      <span data-es="↑ Desplaza para despegar/avanzar" data-en="↑ Scroll to launch/advance">↑ Desplaza para despegar/avanzar</span>
+    </div>
+
+    <div id="mission-controls" role="group" aria-label="Controles de misión">
+      <button id="mission-back" type="button" aria-label="Retroceder" title="Retroceder">↓</button>
+      <button id="mission-forward" type="button" aria-label="Despegar y avanzar" title="Despegar y avanzar">↑</button>
     </div>
 
   </main>
