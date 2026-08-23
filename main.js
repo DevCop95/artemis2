@@ -222,6 +222,144 @@ const QUALITY = {
   moonSegments: lowPowerDevice ? 80 : 112,
 };
 
+// ══════════════════════════════════════════════
+// 2D FALLBACK — visualización usable sin WebGL
+// ══════════════════════════════════════════════
+const fallbackCanvas = document.getElementById('fallback-canvas');
+const fallbackCtx = fallbackCanvas?.getContext('2d');
+const fallbackStars = Array.from({ length: 150 }, (_, index) => ({
+  x: (index * 0.61803398875) % 1,
+  y: (index * 0.38196601125) % 1,
+  size: 0.5 + ((index * 17) % 10) / 10,
+  alpha: 0.25 + ((index * 23) % 65) / 100,
+}));
+
+function resizeFallback() {
+  if (!fallbackCanvas || !fallbackCtx) return;
+  const ratio = Math.min(window.devicePixelRatio || 1, 2);
+  fallbackCanvas.width = Math.round(innerWidth * ratio);
+  fallbackCanvas.height = Math.round(innerHeight * ratio);
+  fallbackCtx.setTransform(ratio, 0, 0, ratio, 0, 0);
+}
+
+function drawFallback(progressValue, time) {
+  if (!fallbackCtx) return;
+  const ctx = fallbackCtx;
+  const width = innerWidth;
+  const height = innerHeight;
+  const p = clamp(progressValue, 0, 100) / 100;
+  const pulse = Math.sin(time * 4) * 0.5 + 0.5;
+
+  ctx.clearRect(0, 0, width, height);
+  const sky = ctx.createRadialGradient(width * 0.52, height * 0.48, 0, width * 0.52, height * 0.48, width * 0.8);
+  sky.addColorStop(0, '#0b1427');
+  sky.addColorStop(0.65, '#050810');
+  sky.addColorStop(1, '#02040a');
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, width, height);
+
+  for (const star of fallbackStars) {
+    const twinkle = star.alpha + Math.sin(time * 2 + star.x * 20) * 0.08;
+    ctx.fillStyle = `rgba(210,225,255,${Math.max(0.12, twinkle)})`;
+    ctx.beginPath();
+    ctx.arc(star.x * width, star.y * height, star.size, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  const earthX = width * 0.14 - p * width * 0.12;
+  const earthY = height * 0.78;
+  const earthRadius = Math.max(150, Math.min(width, height) * 0.42);
+  const earthGlow = ctx.createRadialGradient(earthX, earthY, earthRadius * 0.65, earthX, earthY, earthRadius * 1.12);
+  earthGlow.addColorStop(0, 'rgba(37,125,220,0.16)');
+  earthGlow.addColorStop(1, 'rgba(37,125,220,0)');
+  ctx.fillStyle = earthGlow;
+  ctx.beginPath();
+  ctx.arc(earthX, earthY, earthRadius * 1.14, 0, Math.PI * 2);
+  ctx.fill();
+
+  const earth = ctx.createRadialGradient(earthX - earthRadius * 0.35, earthY - earthRadius * 0.4, earthRadius * 0.1, earthX, earthY, earthRadius);
+  earth.addColorStop(0, '#7fb7c9');
+  earth.addColorStop(0.5, '#1d527c');
+  earth.addColorStop(1, '#061324');
+  ctx.fillStyle = earth;
+  ctx.beginPath();
+  ctx.arc(earthX, earthY, earthRadius, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(earthX, earthY, earthRadius * 0.985, 0, Math.PI * 2);
+  ctx.clip();
+  ctx.fillStyle = 'rgba(116,166,105,0.55)';
+  for (let i = 0; i < 10; i++) {
+    const landX = earthX - earthRadius * 0.74 + ((i * 83) % 150) / 100 * earthRadius;
+    const landY = earthY - earthRadius * 0.65 + ((i * 47) % 135) / 100 * earthRadius;
+    ctx.beginPath();
+    ctx.ellipse(landX, landY, earthRadius * (0.08 + (i % 3) * 0.025), earthRadius * (0.035 + (i % 2) * 0.02), i * 0.4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+
+  const moonX = width * (0.78 - p * 0.12);
+  const moonY = height * (0.42 + Math.sin(p * Math.PI) * 0.08);
+  const moonRadius = Math.max(42, Math.min(width, height) * 0.095);
+  const moon = ctx.createRadialGradient(moonX - moonRadius * 0.35, moonY - moonRadius * 0.35, 0, moonX, moonY, moonRadius);
+  moon.addColorStop(0, '#dedbd0');
+  moon.addColorStop(0.72, '#8d8d8b');
+  moon.addColorStop(1, '#3b414c');
+  ctx.fillStyle = moon;
+  ctx.beginPath();
+  ctx.arc(moonX, moonY, moonRadius, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(46,48,52,0.28)';
+  for (let i = 0; i < 12; i++) {
+    const craterX = moonX - moonRadius * 0.7 + ((i * 37) % 140) / 100 * moonRadius;
+    const craterY = moonY - moonRadius * 0.7 + ((i * 61) % 140) / 100 * moonRadius;
+    ctx.beginPath();
+    ctx.arc(craterX, craterY, moonRadius * (0.03 + (i % 4) * 0.012), 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  const rocketX = width * (0.35 + p * 0.38);
+  const rocketY = height * (0.62 - p * 0.26 + (p > 0.72 ? (p - 0.72) * height * 0.2 / height : 0));
+  const angle = -0.35 + Math.sin(p * Math.PI) * 0.12;
+  ctx.save();
+  ctx.translate(rocketX, rocketY);
+  ctx.rotate(angle);
+  ctx.strokeStyle = 'rgba(201,168,76,0.42)';
+  ctx.setLineDash([5, 8]);
+  ctx.beginPath();
+  ctx.moveTo(-width * 0.29, 0);
+  ctx.lineTo(0, 0);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.globalAlpha = 0.25 + p * 0.65;
+  ctx.fillStyle = '#ff9c2f';
+  ctx.beginPath();
+  ctx.moveTo(-12, 18);
+  ctx.lineTo(0, 42 + pulse * 10);
+  ctx.lineTo(12, 18);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = '#ede8e3';
+  ctx.beginPath();
+  ctx.moveTo(0, -33);
+  ctx.quadraticCurveTo(17, -14, 13, 18);
+  ctx.lineTo(-13, 18);
+  ctx.quadraticCurveTo(-17, -14, 0, -33);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = '#e02828';
+  ctx.beginPath();
+  ctx.moveTo(-13, 8); ctx.lineTo(-27, 23); ctx.lineTo(-10, 19); ctx.closePath();
+  ctx.moveTo(13, 8); ctx.lineTo(27, 23); ctx.lineTo(10, 19); ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = '#4a8ccf';
+  ctx.beginPath();
+  ctx.arc(0, -5, 5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
 let renderer = null;
 if (hasWebGLSupport()) {
   try {
@@ -237,6 +375,8 @@ if (hasWebGLSupport()) {
 if (!renderer) {
   const warning = document.getElementById('webgl-warning');
   if (warning) warning.hidden = false;
+  fallbackCanvas?.classList.add('is-active');
+  resizeFallback();
   // En modo 2D no necesitamos esperar las texturas 3D para mostrar la interfaz.
   setTimeout(finishLoading, 0);
 }
@@ -533,8 +673,11 @@ const fireScale = { s: 0 }; // Proxy for engine fire scale
 let t = 0;
 function loop() {
   requestAnimationFrame(loop);
-  if (!renderer) return;
   t += 0.003;
+  if (!renderer) {
+    drawFallback(window.missionProgress || 0, t);
+    return;
+  }
 
   earthMesh.rotation.y  = t * 0.40;
   cloudMesh.rotation.y  = t * 0.38;
@@ -556,7 +699,10 @@ function loop() {
 loop();
 
 window.addEventListener('resize', () => {
-  if (!renderer) return;
+  if (!renderer) {
+    resizeFallback();
+    return;
+  }
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
@@ -803,6 +949,7 @@ function tick() {
   const progressStep = clamp((target - progress) * lerpSpeed, -maxProgressStep, maxProgressStep);
   progress += progressStep;
   if (Math.abs(target - progress) < 0.001) progress = target;
+  window.missionProgress = progress;
 
   // Apply interpolated values directly
   const earthPos = getKeyframeVal(progress, earthKF);
