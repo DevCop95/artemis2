@@ -204,13 +204,48 @@ function makeMoonMaps() {
 // ══════════════════════════════════════════════
 // THREE.JS SCENE
 // ══════════════════════════════════════════════
-function hasWebGLSupport() {
-  const canvas = document.createElement('canvas');
-  return Boolean(
-    canvas.getContext('webgl2', { failIfMajorPerformanceCaveat: false }) ||
-    canvas.getContext('webgl', { failIfMajorPerformanceCaveat: false }) ||
-    canvas.getContext('experimental-webgl', { failIfMajorPerformanceCaveat: false })
-  );
+function createRenderer() {
+  const profiles = [
+    { api: 'webgl2', antialias: true, powerPreference: 'high-performance' },
+    { api: 'webgl2', antialias: false, powerPreference: 'low-power' },
+    { api: 'webgl', antialias: false, powerPreference: 'low-power' },
+    { api: 'experimental-webgl', antialias: false, powerPreference: 'low-power' },
+  ];
+
+  for (const profile of profiles) {
+    const canvas = document.createElement('canvas');
+    let context;
+    try {
+      context = canvas.getContext(profile.api, {
+        alpha: true,
+        antialias: profile.antialias,
+        depth: true,
+        stencil: false,
+        powerPreference: profile.powerPreference,
+        failIfMajorPerformanceCaveat: false,
+        preserveDrawingBuffer: false,
+      });
+      if (!context) continue;
+
+      const candidate = new THREE.WebGLRenderer({
+        canvas,
+        context,
+        alpha: true,
+        antialias: profile.antialias,
+        powerPreference: profile.powerPreference,
+        precision: 'mediump',
+      });
+      candidate.setPixelRatio(QUALITY.pixelRatio);
+      candidate.setSize(innerWidth, innerHeight);
+      document.getElementById('canvas-container').appendChild(candidate.domElement);
+      return candidate;
+    } catch (error) {
+      console.warn(`No se pudo inicializar ${profile.api}.`, error);
+      context?.getExtension('WEBGL_lose_context')?.loseContext();
+    }
+  }
+
+  return null;
 }
 
 const lowPowerDevice = window.matchMedia('(max-width: 768px)').matches
@@ -361,16 +396,7 @@ function drawFallback(progressValue, time) {
 }
 
 let renderer = null;
-if (hasWebGLSupport()) {
-  try {
-    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setPixelRatio(QUALITY.pixelRatio);
-    renderer.setSize(innerWidth, innerHeight);
-    document.getElementById('canvas-container').appendChild(renderer.domElement);
-  } catch (error) {
-    console.warn('WebGL no disponible; se activa el modo 2D.', error);
-  }
-}
+renderer = createRenderer();
 
 if (!renderer) {
   const warning = document.getElementById('webgl-warning');
