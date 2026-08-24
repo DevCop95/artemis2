@@ -206,32 +206,16 @@ function makeMoonMaps() {
 // ══════════════════════════════════════════════
 function createRenderer() {
   const profiles = [
-    { api: 'webgl2', antialias: true, powerPreference: 'high-performance' },
-    { api: 'webgl2', antialias: false, powerPreference: 'low-power' },
-    { api: 'webgl', antialias: false, powerPreference: 'low-power' },
-    { api: 'experimental-webgl', antialias: false, powerPreference: 'low-power' },
+    { antialias: true, alpha: true, powerPreference: 'high-performance' },
+    { antialias: false, alpha: true, powerPreference: 'low-power' },
+    { antialias: false, alpha: false, powerPreference: 'low-power' },
   ];
 
   for (const profile of profiles) {
-    const canvas = document.createElement('canvas');
-    let context;
     try {
-      context = canvas.getContext(profile.api, {
-        alpha: true,
-        antialias: profile.antialias,
-        depth: true,
-        stencil: false,
-        powerPreference: profile.powerPreference,
-        failIfMajorPerformanceCaveat: false,
-        preserveDrawingBuffer: false,
-      });
-      if (!context) continue;
-
       const candidate = new THREE.WebGLRenderer({
-        canvas,
-        context,
-        alpha: true,
         antialias: profile.antialias,
+        alpha: profile.alpha,
         powerPreference: profile.powerPreference,
         precision: 'mediump',
       });
@@ -240,8 +224,7 @@ function createRenderer() {
       document.getElementById('canvas-container').appendChild(candidate.domElement);
       return candidate;
     } catch (error) {
-      console.warn(`No se pudo inicializar ${profile.api}.`, error);
-      context?.getExtension('WEBGL_lose_context')?.loseContext();
+      console.warn('No se pudo inicializar este perfil WebGL.', error);
     }
   }
 
