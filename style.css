@@ -39,30 +39,6 @@ body {
 #canvas-container {
   position: absolute; inset: 0; z-index: 1;
 }
-#fallback-canvas {
-  position: fixed; inset: 0; z-index: 1;
-  display: none; width: 100%; height: 100%;
-  pointer-events: none;
-}
-#fallback-canvas.is-active { display: block; }
-#webgl-warning {
-  position: fixed; left: 50%; top: 72px; z-index: 80;
-  transform: translateX(-50%);
-  display: flex; align-items: center; gap: 0.65rem;
-  max-width: min(620px, calc(100vw - 32px));
-  padding: 0.65rem 0.9rem;
-  border: 1px solid var(--gold-30);
-  border-radius: 4px;
-  background: rgba(5, 8, 16, 0.88);
-  color: var(--ink-70);
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 0.68rem;
-  letter-spacing: 0.04em;
-  line-height: 1.35;
-  backdrop-filter: blur(8px);
-}
-#webgl-warning strong { color: var(--gold); white-space: nowrap; }
-#webgl-warning[hidden] { display: none; }
 #asset-warning {
   position: fixed; left: 50%; top: 132px; z-index: 81;
   transform: translateX(-50%);
